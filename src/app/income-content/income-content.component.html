@@ -1,0 +1,42 @@
+<div class="income-content">
+  <h1>Personal Income Report</h1>
+  
+  <div class="summary">
+    <h2>Total Monthly Income: ${{ getTotalIncome() }}</h2>
+  </div>
+
+  <div class="cards-container">
+    <div class="income-card" *ngFor="let source of incomeSources">
+      <div class="card-icon">{{ source.icon }}</div>
+      <h3>{{ source.title }}</h3>
+      <p class="amount">${{ source.amount }}</p>
+      <p class="description">{{ source.description }}</p>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <h2>Recent Transactions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Source</th>
+          <th>Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let transaction of transactions">
+          <td>{{ transaction.date }}</td>
+          <td>{{ transaction.source }}</td>
+          <td>${{ transaction.amount }}</td>
+          <td>
+            <span class="status" [class.pending]="transaction.status === 'Pending'">
+              {{ transaction.status }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
