@@ -17,19 +17,31 @@ export class DownloadTemplateComponent {
     const element = this.contentToDownload.nativeElement;
     
     // PDF configuration with margins
-    const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = 210; // A4 width in mm
     const pageHeight = 297; // A4 height in mm
     const margin = 15; // margin in mm
     const contentWidth = pageWidth - (2 * margin);
     const contentHeight = pageHeight - (2 * margin);
     
-    // Get all elements that should not be split
-    const avoidBreakElements = this.getAvoidBreakElements(element);
+    // Get the actual width of the element
+    const elementWidth = element.offsetWidth;
     
-    // Create canvas of full content
+    // Calculate the scale factor that will be used
+    const scale = 2;
+    
+    // Calculate how many pixels in the canvas will represent one page height
+    // First, get the ratio of element width to PDF content width
+    const pxPerMm = (elementWidth * scale) / contentWidth;
+    
+    // Now calculate page height in canvas pixels
+    const pxPageHeight = contentHeight * pxPerMm;
+    
+    // Insert padding divs to handle page breaks BEFORE rendering
+    this.insertPageBreaks(element, pxPageHeight / scale); // Use unscaled height for DOM measurements
+    
+    // Create canvas of full content AFTER padding divs are inserted
     const canvas = await html2canvas(element, {
-      scale: 2,
+      scale: scale,
       useCORS: true,
       logging: false,
       windowWidth: element.scrollWidth,
@@ -37,13 +49,11 @@ export class DownloadTemplateComponent {
     });
 
     const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
     const imgWidth = contentWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-    // Calculate pixel to mm ratio
-    const pxToMm = imgHeight / canvas.height;
-    
-    // Smart page break algorithm
+    // Now split the canvas into pages
     let currentY = 0;
     let pageNumber = 0;
     
@@ -52,31 +62,11 @@ export class DownloadTemplateComponent {
         pdf.addPage();
       }
       
-      // Calculate remaining height on current page
       const remainingHeight = imgHeight - currentY;
-      let pageContentHeight = Math.min(contentHeight, remainingHeight);
+      const pageContentHeight = Math.min(contentHeight, remainingHeight);
       
-      // Check for elements that shouldn't be split
-      const breakPoint = this.findOptimalBreakPoint(
-        avoidBreakElements,
-        currentY,
-        currentY + pageContentHeight,
-        pxToMm,
-        contentHeight
-      );
-      
-      if (breakPoint !== null) {
-        pageContentHeight = breakPoint - currentY;
-        
-        // Ensure we have a minimum page height
-        if (pageContentHeight < contentHeight * 0.1 && pageNumber > 0) {
-          // Page would be too small, skip to next page
-          currentY = breakPoint;
-          continue;
-        }
-      }
-      
-      // Calculate source position in pixels
+      // Calculate pixel to mm ratio
+      const pxToMm = imgHeight / canvas.height;
       const sourceY = currentY / pxToMm;
       const sourceHeight = pageContentHeight / pxToMm;
       
@@ -87,6 +77,9 @@ export class DownloadTemplateComponent {
       
       const pageCtx = pageCanvas.getContext('2d');
       if (pageCtx) {
+        pageCtx.fillStyle = 'white';
+        pageCtx.fillRect(0, 0, canvas.width, sourceHeight);
+        
         pageCtx.drawImage(
           canvas,
           0, sourceY,
@@ -102,7 +95,6 @@ export class DownloadTemplateComponent {
       currentY += pageContentHeight;
       pageNumber++;
       
-      // Safety check to prevent infinite loop
       if (pageNumber > 100) {
         console.warn('Too many pages, stopping PDF generation');
         break;
@@ -112,75 +104,36 @@ export class DownloadTemplateComponent {
     pdf.save('income-report.pdf');
   }
 
-  private getAvoidBreakElements(container: HTMLElement): Array<{top: number, bottom: number, height: number}> {
-    const elements: Array<{top: number, bottom: number, height: number}> = [];
-    const containerRect = container.getBoundingClientRect();
-    const containerTop = containerRect.top + window.scrollY;
+  private insertPageBreaks(container: HTMLElement, pxPageHeight: number): void {
+    // Get all elements that should not be split
+    const avoidElements = container.querySelectorAll('.income-card, h1, h2, h3, table thead, table tbody tr');
     
-    // Select elements that should not be split
-    const selectors = [
-      '.income-card',
-      'h1', 'h2', 'h3',
-      'table thead',
-      'table tbody tr'
-    ];
-    
-    selectors.forEach(selector => {
-      const nodeList = container.querySelectorAll(selector);
-      nodeList.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const top = rect.top + window.scrollY - containerTop;
-        const bottom = top + rect.height;
-        
-        elements.push({
-          top,
-          bottom,
-          height: rect.height
-        });
-      });
-    });
-    
-    return elements.sort((a, b) => a.top - b.top);
-  }
-
-  private findOptimalBreakPoint(
-    elements: Array<{top: number, bottom: number, height: number}>,
-    pageStart: number,
-    pageEnd: number,
-    pxToMm: number,
-    maxPageHeight: number
-  ): number | null {
-    const pageStartPx = pageStart / pxToMm;
-    const pageEndPx = pageEnd / pxToMm;
-    
-    // Find elements that would be split by this page break
-    for (let i = elements.length - 1; i >= 0; i--) {
-      const element = elements[i];
+    avoidElements.forEach((el: Element) => {
+      const htmlEl = el as HTMLElement;
+      const clientRect = htmlEl.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
       
-      // Check if element is split by the page break
-      if (element.top < pageEndPx && element.bottom > pageEndPx) {
-        // Element would be split
+      // Calculate position relative to container
+      const relativeTop = clientRect.top - containerRect.top;
+      const relativeBottom = clientRect.bottom - containerRect.top;
+      
+      // Check if element would be split across pages
+      const startPage = Math.floor(relativeTop / pxPageHeight);
+      const endPage = Math.floor(relativeBottom / pxPageHeight);
+      const nPages = Math.abs(relativeBottom - relativeTop) / pxPageHeight;
+      
+      // If element is broken across pages and is at most one page long
+      if (endPage !== startPage && nPages <= 1) {
+        // Create padding div to push element to next page
+        const paddingHeight = pxPageHeight - (relativeTop % pxPageHeight);
+        const pad = document.createElement('div');
+        pad.style.display = 'block';
+        pad.style.height = paddingHeight + 'px';
+        pad.className = 'page-break-padding';
         
-        // If element is too large to fit on a page, allow split
-        const elementHeightMm = element.height * pxToMm;
-        if (elementHeightMm > maxPageHeight * 0.9) {
-          continue;
-        }
-        
-        // Always try to break before this element to keep it intact
-        const breakBeforeMm = element.top * pxToMm;
-        
-        // Check if the element can fit on the next page
-        if (elementHeightMm <= maxPageHeight) {
-          return breakBeforeMm;
-        }
-        
-        // If element can't fit on next page either, try breaking after
-        const breakAfterMm = element.bottom * pxToMm;
-        return breakAfterMm;
+        // Insert before the element
+        htmlEl.parentNode?.insertBefore(pad, htmlEl);
       }
-    }
-    
-    return null;
+    });
   }
 }
