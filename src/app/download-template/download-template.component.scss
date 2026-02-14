@@ -1,11 +1,17 @@
 .download-container {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .content-wrapper {
   background: white;
   padding: 30px;
   margin-bottom: 20px;
+  max-width: 800px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .download-btn {
