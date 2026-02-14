@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -11,10 +11,18 @@ import { PageBreakUtil } from '../utils/page-break.util';
   templateUrl: './download-template.component.html',
   styleUrls: ['./download-template.component.scss']
 })
-export class DownloadTemplateComponent {
+export class DownloadTemplateComponent implements AfterViewInit {
   @ViewChild('contentToDownload', { static: false }) contentToDownload!: ElementRef;
+  
+  private generatedPdf: jsPDF | null = null;
+  isGenerating = false;
 
-  async downloadAsPDF() {
+  async ngAfterViewInit() {
+    await this.generatePDF();
+  }
+
+  async generatePDF() {
+    this.isGenerating = true;
     const element = this.contentToDownload.nativeElement;
     const margin = 15;
     const contentWidth = 180;
@@ -66,6 +74,13 @@ export class DownloadTemplateComponent {
       if (pageNumber > 100) break;
     }
 
-    pdf.save('income-report.pdf');
+    this.generatedPdf = pdf;
+    this.isGenerating = false;
+  }
+
+  downloadPDF() {
+    if (this.generatedPdf) {
+      this.generatedPdf.save('income-report.pdf');
+    }
   }
 }

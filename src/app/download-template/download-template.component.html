@@ -3,7 +3,7 @@
     <ng-content></ng-content>
   </div>
   
-  <button class="download-btn" (click)="downloadAsPDF()">
-    Download as PDF
+  <button class="download-btn" (click)="downloadPDF()" [disabled]="isGenerating">
+    {{ isGenerating ? 'Generating PDF...' : 'Download as PDF' }}
   </button>
 </div>

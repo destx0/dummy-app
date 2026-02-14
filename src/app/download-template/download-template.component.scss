@@ -25,11 +25,16 @@
   font-weight: 500;
   transition: background-color 0.3s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #45a049;
   }
 
-  &:active {
+  &:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
   }
 }
