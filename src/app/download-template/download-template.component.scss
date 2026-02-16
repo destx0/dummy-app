@@ -12,6 +12,11 @@
   max-width: 800px;
   width: 100%;
   box-sizing: border-box;
+  color-scheme: light only;
+  
+  * {
+    color-scheme: light only;
+  }
 }
 
 .download-btn {

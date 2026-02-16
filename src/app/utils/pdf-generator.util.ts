@@ -10,7 +10,6 @@ export class PdfGenerator {
   static async generate(element: HTMLElement): Promise<jsPDF> {
     const contentHeightPx = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
     
-    // Calculate the actual page height that will be used in the rendered content
     const elementWidth = element.offsetWidth;
     const contentWidthPx = this.PAGE_WIDTH_PX - (2 * this.MARGIN_PX);
     const scaleFactor = contentWidthPx / elementWidth;
@@ -21,7 +20,30 @@ export class PdfGenerator {
     const canvas = await html2canvas(element, {
       scale: this.SCALE,
       useCORS: true,
-      logging: false
+      logging: false,
+      backgroundColor: '#ffffff',
+      onclone: (clonedDoc) => {
+        // Remove all injected extension styles (Dark Reader, Night Eye, etc.)
+        const injectedStyles = clonedDoc.querySelectorAll('style:not([data-vite-dev-id]):not([type="text/css"][data-styled])');
+        injectedStyles.forEach(style => {
+          const content = style.textContent || '';
+          // Remove styles that contain CSS variables or extension-specific patterns
+          if (content.includes('--darkreader') || 
+              content.includes('--nighteye') || 
+              content.includes('var(--') ||
+              content.includes('[data-darkreader]') ||
+              content.includes('[data-nighteye]')) {
+            style.remove();
+          }
+        });
+        
+        // Force original colors on all elements
+        const allElements = clonedDoc.querySelectorAll('*');
+        allElements.forEach(el => {
+          const htmlEl = el as HTMLElement;
+          htmlEl.style.filter = 'none';
+        });
+      }
     });
 
     return this.createPdfFromCanvas(canvas);
