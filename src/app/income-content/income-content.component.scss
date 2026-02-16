@@ -18,7 +18,10 @@
   }
 
   .cards-container {
-    display: grid;
+    background-color: red;
+    padding:30px;
+    display: flex;
+    flex-direction: column;
     gap: 20px;
     margin-bottom: 40px;
   }

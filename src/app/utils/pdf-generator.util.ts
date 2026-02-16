@@ -2,15 +2,21 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export class PdfGenerator {
-  private static readonly PAGE_WIDTH_PX = 794;  // A4 width at 96 DPI
-  private static readonly PAGE_HEIGHT_PX = 1123; // A4 height at 96 DPI
-  private static readonly MARGIN_PX = 57;        // 15mm in pixels
+  private static readonly PAGE_WIDTH_PX = 794;
+  private static readonly PAGE_HEIGHT_PX = 1123;
+  private static readonly MARGIN_PX = 57;
   private static readonly SCALE = 2;
 
   static async generate(element: HTMLElement): Promise<jsPDF> {
     const contentHeightPx = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
     
-    this.insertPageBreaks(element, contentHeightPx);
+    // Calculate the actual page height that will be used in the rendered content
+    const elementWidth = element.offsetWidth;
+    const contentWidthPx = this.PAGE_WIDTH_PX - (2 * this.MARGIN_PX);
+    const scaleFactor = contentWidthPx / elementWidth;
+    const actualPageHeight = contentHeightPx / scaleFactor;
+    
+    this.insertPageBreaks(element, actualPageHeight);
     
     const canvas = await html2canvas(element, {
       scale: this.SCALE,
@@ -23,31 +29,38 @@ export class PdfGenerator {
 
   private static insertPageBreaks(container: HTMLElement, pxPageHeight: number): void {
     const avoidSelectors = '.income-card, h1, h2, h3, table thead, table tbody tr';
-    let modified = true;
     
+    // Process all elements multiple times until no more padding is needed
+    let modified = true;
     while (modified) {
       modified = false;
       const avoidElements = Array.from(container.querySelectorAll(avoidSelectors));
-      const containerRect = container.getBoundingClientRect();
       
       for (const el of avoidElements) {
         const htmlEl = el as HTMLElement;
         const rect = htmlEl.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
         
-        const relativeTop = rect.top - containerRect.top;
-        const relativeBottom = rect.bottom - containerRect.top;
+        // Position relative to container (matching html2pdf logic)
+        const elementTop = rect.top - containerRect.top;
+        const elementBottom = rect.bottom - containerRect.top;
         
-        const startPage = Math.floor(relativeTop / pxPageHeight);
-        const endPage = Math.floor(relativeBottom / pxPageHeight);
-        const nPages = (relativeBottom - relativeTop) / pxPageHeight;
+        // Check which page the element starts and ends on
+        const startPage = Math.floor(elementTop / pxPageHeight);
+        const endPage = Math.floor(elementBottom / pxPageHeight);
+        const elementPages = (elementBottom - elementTop) / pxPageHeight;
         
-        if (endPage !== startPage && nPages <= 1) {
+        // If element spans pages and fits in one page, push to next page
+        if (endPage !== startPage && elementPages <= 1) {
+          const paddingHeight = pxPageHeight - (elementTop % pxPageHeight);
           const pad = document.createElement('div');
           pad.style.display = 'block';
-          pad.style.height = (pxPageHeight - (relativeTop % pxPageHeight)) + 'px';
+          pad.style.height = paddingHeight + 'px';
+          pad.className = 'page-break-spacer';
+          
           htmlEl.parentNode?.insertBefore(pad, htmlEl);
           modified = true;
-          break;
+          break; // Recalculate after each insertion
         }
       }
     }
