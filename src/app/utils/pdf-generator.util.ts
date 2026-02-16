@@ -2,16 +2,15 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export class PdfGenerator {
-  private static readonly MARGIN = 15;
-  private static readonly CONTENT_WIDTH = 180;
-  private static readonly CONTENT_HEIGHT = 267;
+  private static readonly PAGE_WIDTH_PX = 794;  // A4 width at 96 DPI
+  private static readonly PAGE_HEIGHT_PX = 1123; // A4 height at 96 DPI
+  private static readonly MARGIN_PX = 57;        // 15mm in pixels
   private static readonly SCALE = 2;
 
   static async generate(element: HTMLElement): Promise<jsPDF> {
-    const pxPerMm = (element.offsetWidth * this.SCALE) / this.CONTENT_WIDTH;
-    const pxPageHeight = this.CONTENT_HEIGHT * pxPerMm;
+    const contentHeightPx = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
     
-    this.insertPageBreaks(element, pxPageHeight / this.SCALE);
+    this.insertPageBreaks(element, contentHeightPx);
     
     const canvas = await html2canvas(element, {
       scale: this.SCALE,
@@ -55,19 +54,22 @@ export class PdfGenerator {
   }
 
   private static createPdfFromCanvas(canvas: HTMLCanvasElement): jsPDF {
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgHeight = (canvas.height * this.CONTENT_WIDTH) / canvas.width;
-    const pxToMm = imgHeight / canvas.height;
+    const pdf = new jsPDF('p', 'px', [this.PAGE_WIDTH_PX, this.PAGE_HEIGHT_PX]);
+    const contentWidthPx = this.PAGE_WIDTH_PX - (2 * this.MARGIN_PX);
+    const contentHeightPx = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
+    
+    const canvasHeightPx = (canvas.height * contentWidthPx) / canvas.width;
+    const pxRatio = canvasHeightPx / canvas.height;
     
     let currentY = 0;
     let pageNumber = 0;
     
-    while (currentY < imgHeight && pageNumber < 100) {
+    while (currentY < canvasHeightPx && pageNumber < 100) {
       if (pageNumber > 0) pdf.addPage();
       
-      const pageContentHeight = Math.min(this.CONTENT_HEIGHT, imgHeight - currentY);
-      const sourceY = currentY / pxToMm;
-      const sourceHeight = pageContentHeight / pxToMm;
+      const pageContentHeight = Math.min(contentHeightPx, canvasHeightPx - currentY);
+      const sourceY = currentY / pxRatio;
+      const sourceHeight = pageContentHeight / pxRatio;
       
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = canvas.width;
@@ -80,7 +82,7 @@ export class PdfGenerator {
         ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
         
         const pageImgData = pageCanvas.toDataURL('image/png');
-        pdf.addImage(pageImgData, 'PNG', this.MARGIN, this.MARGIN, this.CONTENT_WIDTH, pageContentHeight);
+        pdf.addImage(pageImgData, 'PNG', this.MARGIN_PX, this.MARGIN_PX, contentWidthPx, pageContentHeight);
       }
       
       currentY += pageContentHeight;
