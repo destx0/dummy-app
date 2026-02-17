@@ -1,7 +1,12 @@
 export class PdfGenerator {
-  private static readonly PAGE_HEIGHT_PX = 1123;
-  private static readonly MARGIN_PX = 57;
-  private static readonly CONTENT_HEIGHT_PX = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
+  // A4 page dimensions at 96 DPI
+  private static readonly A4_HEIGHT_MM = 297;
+  private static readonly MM_TO_PX = 3.7795275591; // 96 DPI conversion
+  private static readonly PAGE_MARGIN_PX = 40; // Top and bottom margins from @page
+  
+  // Calculate effective page height
+  private static readonly FULL_PAGE_HEIGHT_PX = this.A4_HEIGHT_MM * this.MM_TO_PX; // ~1122.52px
+  private static readonly CONTENT_PAGE_HEIGHT_PX = this.FULL_PAGE_HEIGHT_PX - (2 * this.PAGE_MARGIN_PX);
 
   /**
    * Inserts dynamic page break spacers to prevent elements from splitting across pages
@@ -10,47 +15,48 @@ export class PdfGenerator {
    */
   static insertPageBreaks(
     container: HTMLElement,
-    avoidSelectors: string = '.income-card, h1, h2, h3, table thead, table tbody tr'
+    avoidSelectors: string = '.income-card, h1, h2, h3, .summary, .table-section, table'
   ): void {
     // Remove any existing page break spacers
     const existingSpacers = container.querySelectorAll('.page-break-spacer');
     existingSpacers.forEach((spacer: Element) => spacer.remove());
     
-    let modified = true;
-    let iterations = 0;
-    const maxIterations = 50; // Prevent infinite loops
+    // Use content page height (full page minus top and bottom margins)
+    const pxPageHeight = this.CONTENT_PAGE_HEIGHT_PX;
     
-    while (modified && iterations < maxIterations) {
-      modified = false;
-      iterations++;
+    // Get all elements that should avoid page breaks
+    const avoidElements = Array.from(container.querySelectorAll(avoidSelectors));
+    
+    // Get container's top position for relative calculations
+    const containerRect = container.getBoundingClientRect();
+    const containerTop = containerRect.top;
+    
+    // Loop through all elements that should avoid breaks
+    avoidElements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
       
-      const avoidElements = Array.from(container.querySelectorAll(avoidSelectors));
+      // Get element position relative to viewport
+      const clientRect = htmlEl.getBoundingClientRect();
       
-      for (const el of avoidElements) {
-        const htmlEl = el as HTMLElement;
-        const rect = htmlEl.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        
-        const elementTop = rect.top - containerRect.top;
-        const elementBottom = rect.bottom - containerRect.top;
-        
-        const startPage = Math.floor(elementTop / this.CONTENT_HEIGHT_PX);
-        const endPage = Math.floor(elementBottom / this.CONTENT_HEIGHT_PX);
-        const elementPages = (elementBottom - elementTop) / this.CONTENT_HEIGHT_PX;
-        
-        // If element spans pages and fits on one page, add spacer
-        if (endPage !== startPage && elementPages <= 1) {
-          const paddingHeight = this.CONTENT_HEIGHT_PX - (elementTop % this.CONTENT_HEIGHT_PX);
-          const pad = document.createElement('div');
-          pad.style.display = 'block';
-          pad.style.height = paddingHeight + 'px';
-          pad.className = 'page-break-spacer';
-          htmlEl.parentNode?.insertBefore(pad, htmlEl);
-          modified = true;
-          break;
-        }
+      // Calculate position relative to container top
+      const elementTop = clientRect.top - containerTop;
+      const elementBottom = clientRect.bottom - containerTop;
+      
+      // Avoid: Check if a break happens mid-element
+      const startPage = Math.floor(elementTop / pxPageHeight);
+      const endPage = Math.floor(elementBottom / pxPageHeight);
+      const nPages = Math.abs(elementBottom - elementTop) / pxPageHeight;
+      
+      // If element is broken across pages and is at most one page long, add spacer
+      if (endPage !== startPage && nPages <= 1) {
+        // Create a padding div to push the element to the next page
+        const pad = document.createElement('div');
+        pad.style.display = 'block';
+        pad.style.height = (pxPageHeight - (elementTop % pxPageHeight)) + 'px';
+        pad.className = 'page-break-spacer';
+        htmlEl.parentNode?.insertBefore(pad, htmlEl);
       }
-    }
+    });
   }
 
   /**
