@@ -5,6 +5,12 @@
   align-items: center;
 }
 
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
 .download-btn {
   background-color: #4CAF50;
   color: white;
@@ -15,7 +21,6 @@
   font-size: 16px;
   font-weight: 500;
   transition: background-color 0.3s;
-  margin-bottom: 20px;
 
   &:hover:not(:disabled) {
     background-color: #45a049;
@@ -28,5 +33,13 @@
   &:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+  }
+
+  &.generate-btn {
+    background-color: #2196F3;
+
+    &:hover:not(:disabled) {
+      background-color: #0b7dda;
+    }
   }
 }

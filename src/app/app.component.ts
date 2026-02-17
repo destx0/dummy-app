@@ -15,6 +15,12 @@ export class AppComponent {
   
   title = 'dummy-app';
 
+  async generatePDF() {
+    if (this.downloadTemplate) {
+      await this.downloadTemplate.generatePDF();
+    }
+  }
+
   async downloadPDF() {
     if (this.downloadTemplate) {
       await this.downloadTemplate.downloadPDF();

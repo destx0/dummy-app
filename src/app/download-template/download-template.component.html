@@ -1,3 +1,7 @@
 <div #contentToDownload class="content-wrapper" data-color-scheme="light">
   <ng-content></ng-content>
+  
+  <div #timestamp class="timestamp" *ngIf="generatedAt">
+    Generated on: {{ generatedAt | date:'medium' }}
+  </div>
 </div>
