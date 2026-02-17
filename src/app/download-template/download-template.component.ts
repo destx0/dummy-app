@@ -22,11 +22,7 @@ export class DownloadTemplateComponent {
     
     try {
       this.generatedAt = new Date();
-      
-      // Wait for Angular to update the DOM with the timestamp
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Insert dynamic page breaks using the utility
       PdfGenerator.insertPageBreaks(this.contentToDownload.nativeElement);
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -37,12 +33,7 @@ export class DownloadTemplateComponent {
   }
 
   async downloadPDF() {
-    // Generate timestamp and page breaks if not already done
-    if (!this.generatedAt) {
-      await this.generatePDF();
-    }
-    
-    // Trigger browser print dialog using the utility
+    if (!this.generatedAt) await this.generatePDF();
     PdfGenerator.print();
   }
 }
