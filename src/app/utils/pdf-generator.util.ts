@@ -23,25 +23,12 @@ export class PdfGenerator {
       logging: false,
       backgroundColor: '#ffffff',
       onclone: (clonedDoc) => {
-        // Remove all injected extension styles (Dark Reader, Night Eye, etc.)
-        const injectedStyles = clonedDoc.querySelectorAll('style:not([data-vite-dev-id]):not([type="text/css"][data-styled])');
+        const injectedStyles = clonedDoc.querySelectorAll('style');
         injectedStyles.forEach(style => {
           const content = style.textContent || '';
-          // Remove styles that contain CSS variables or extension-specific patterns
-          if (content.includes('--darkreader') || 
-              content.includes('--nighteye') || 
-              content.includes('var(--') ||
-              content.includes('[data-darkreader]') ||
-              content.includes('[data-nighteye]')) {
+          if (content.includes('var(--')) {
             style.remove();
           }
-        });
-        
-        // Force original colors on all elements
-        const allElements = clonedDoc.querySelectorAll('*');
-        allElements.forEach(el => {
-          const htmlEl = el as HTMLElement;
-          htmlEl.style.filter = 'none';
         });
       }
     });
