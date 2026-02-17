@@ -1,6 +1,5 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import jsPDF from 'jspdf';
 import { PdfGenerator } from '../utils/pdf-generator.util';
 
 @Component({
@@ -12,10 +11,8 @@ import { PdfGenerator } from '../utils/pdf-generator.util';
 })
 export class DownloadTemplateComponent {
   @ViewChild('contentToDownload', { static: false }) contentToDownload!: ElementRef;
-  @ViewChild('timestamp', { static: false }) timestamp!: ElementRef;
   
   isGenerating = false;
-  private generatedPdf: jsPDF | null = null;
   generatedAt: Date | null = null;
 
   async generatePDF() {
@@ -29,7 +26,8 @@ export class DownloadTemplateComponent {
       // Wait for Angular to update the DOM with the timestamp
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      this.generatedPdf = await PdfGenerator.generate(this.contentToDownload.nativeElement);
+      // Insert dynamic page breaks using the utility
+      PdfGenerator.insertPageBreaks(this.contentToDownload.nativeElement);
     } catch (error) {
       console.error('PDF generation failed:', error);
       this.generatedAt = null;
@@ -39,14 +37,12 @@ export class DownloadTemplateComponent {
   }
 
   async downloadPDF() {
-    // If not generated yet, generate first
-    if (!this.generatedPdf) {
+    // Generate timestamp and page breaks if not already done
+    if (!this.generatedAt) {
       await this.generatePDF();
     }
     
-    // Download if generation was successful
-    if (this.generatedPdf) {
-      this.generatedPdf.save('income-report.pdf');
-    }
+    // Trigger browser print dialog using the utility
+    PdfGenerator.print();
   }
 }

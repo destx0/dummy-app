@@ -22,3 +22,72 @@
   font-size: 14px;
   font-style: italic;
 }
+
+.page-break-spacer {
+  display: none; // Hidden in normal view
+}
+
+// Print media styles for PDF generation
+@media print {
+  // Remove default browser headers and footers
+  @page {
+    margin: 0;
+    size: A4;
+  }
+  
+  // Force print background colors and images
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  .content-wrapper,
+  .content-wrapper * {
+    visibility: visible;
+  }
+  
+  .content-wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 20px;
+    background: white !important;
+  }
+  
+  // Show page break spacers in print
+  .page-break-spacer {
+    display: block !important;
+  }
+  
+  // Prevent page breaks inside these elements
+  .income-card,
+  h1, h2, h3,
+  table thead,
+  table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  // Prevent orphaned headings
+  h1, h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  // Keep table headers with content
+  table thead {
+    display: table-header-group;
+  }
+  
+  // Hide any buttons or interactive elements during print
+  button {
+    display: none !important;
+  }
+}
