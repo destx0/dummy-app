@@ -1,6 +1,5 @@
-import { Component, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import jsPDF from 'jspdf';
 import { PdfGenerator } from '../utils/pdf-generator.util';
 
 @Component({
@@ -10,21 +9,23 @@ import { PdfGenerator } from '../utils/pdf-generator.util';
   templateUrl: './download-template.component.html',
   styleUrls: ['./download-template.component.scss']
 })
-export class DownloadTemplateComponent implements AfterViewInit {
+export class DownloadTemplateComponent {
   @ViewChild('contentToDownload', { static: false }) contentToDownload!: ElementRef;
   
-  private generatedPdf: jsPDF | null = null;
   isGenerating = false;
 
-  async ngAfterViewInit() {
+  async downloadPDF() {
+    if (this.isGenerating) return;
+    
     this.isGenerating = true;
-    this.generatedPdf = await PdfGenerator.generate(this.contentToDownload.nativeElement);
-    this.isGenerating = false;
-  }
-
-  downloadPDF() {
-    if (this.generatedPdf) {
-      this.generatedPdf.save('income-report.pdf');
+    
+    try {
+      const pdf = await PdfGenerator.generate(this.contentToDownload.nativeElement);
+      pdf.save('income-report.pdf');
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+    } finally {
+      this.isGenerating = false;
     }
   }
 }

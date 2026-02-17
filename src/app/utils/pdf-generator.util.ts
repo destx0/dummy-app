@@ -15,8 +15,12 @@ export class PdfGenerator {
     const scaleFactor = contentWidthPx / elementWidth;
     const actualPageHeight = contentHeightPx / scaleFactor;
     
+    // Insert page breaks without blocking
+    await this.yieldToMain();
     this.insertPageBreaks(element, actualPageHeight);
     
+    // Render canvas without blocking
+    await this.yieldToMain();
     const canvas = await html2canvas(element, {
       scale: this.SCALE,
       useCORS: true,
@@ -33,13 +37,18 @@ export class PdfGenerator {
       }
     });
 
+    // Create PDF without blocking
+    await this.yieldToMain();
     return this.createPdfFromCanvas(canvas);
+  }
+
+  private static yieldToMain(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 0));
   }
 
   private static insertPageBreaks(container: HTMLElement, pxPageHeight: number): void {
     const avoidSelectors = '.income-card, h1, h2, h3, table thead, table tbody tr';
     
-    // Process all elements multiple times until no more padding is needed
     let modified = true;
     while (modified) {
       modified = false;
@@ -50,16 +59,13 @@ export class PdfGenerator {
         const rect = htmlEl.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         
-        // Position relative to container (matching html2pdf logic)
         const elementTop = rect.top - containerRect.top;
         const elementBottom = rect.bottom - containerRect.top;
         
-        // Check which page the element starts and ends on
         const startPage = Math.floor(elementTop / pxPageHeight);
         const endPage = Math.floor(elementBottom / pxPageHeight);
         const elementPages = (elementBottom - elementTop) / pxPageHeight;
         
-        // If element spans pages and fits in one page, push to next page
         if (endPage !== startPage && elementPages <= 1) {
           const paddingHeight = pxPageHeight - (elementTop % pxPageHeight);
           const pad = document.createElement('div');
@@ -69,13 +75,13 @@ export class PdfGenerator {
           
           htmlEl.parentNode?.insertBefore(pad, htmlEl);
           modified = true;
-          break; // Recalculate after each insertion
+          break;
         }
       }
     }
   }
 
-  private static createPdfFromCanvas(canvas: HTMLCanvasElement): jsPDF {
+  private static async createPdfFromCanvas(canvas: HTMLCanvasElement): Promise<jsPDF> {
     const pdf = new jsPDF('p', 'px', [this.PAGE_WIDTH_PX, this.PAGE_HEIGHT_PX]);
     const contentWidthPx = this.PAGE_WIDTH_PX - (2 * this.MARGIN_PX);
     const contentHeightPx = this.PAGE_HEIGHT_PX - (2 * this.MARGIN_PX);
@@ -109,6 +115,11 @@ export class PdfGenerator {
       
       currentY += pageContentHeight;
       pageNumber++;
+      
+      // Yield to main thread every 3 pages
+      if (pageNumber % 3 === 0) {
+        await this.yieldToMain();
+      }
     }
 
     return pdf;

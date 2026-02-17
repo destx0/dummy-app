@@ -1,9 +1,3 @@
-<div class="download-container">
-  <div #contentToDownload class="content-wrapper" data-color-scheme="light">
-    <ng-content></ng-content>
-  </div>
-  
-  <button class="download-btn" (click)="downloadPDF()" [disabled]="isGenerating">
-    {{ isGenerating ? 'Generating PDF...' : 'Download as PDF' }}
-  </button>
+<div #contentToDownload class="content-wrapper" data-color-scheme="light">
+  <ng-content></ng-content>
 </div>

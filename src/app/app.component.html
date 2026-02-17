@@ -1,3 +1,9 @@
-<app-download-template>
-  <app-income-content></app-income-content>
-</app-download-template>
+<div class="app-container">
+  <button class="download-btn" (click)="downloadPDF()" [disabled]="isGenerating">
+    {{ isGenerating ? 'Generating PDF...' : 'Download PDF' }}
+  </button>
+
+  <app-download-template>
+    <app-income-content></app-income-content>
+  </app-download-template>
+</div>
